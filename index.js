@@ -20,6 +20,8 @@ const PORT = 3001
 app.use('/auth' ,authRouter)
 
 
+
+
 app.listen(PORT , ()=>{
     console.log(`Server stating at http://localhost:${PORT}`);
 })

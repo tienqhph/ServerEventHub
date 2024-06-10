@@ -12,6 +12,9 @@ const userSchame =new mongoose.Schema({
         type:String , 
         require:true
     } , 
+    isUpdated:{
+        type:Boolean
+    },
 
     photoUrl:{
         type :String 
