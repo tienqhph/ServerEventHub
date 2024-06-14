@@ -42,7 +42,7 @@ const verification = async (req, res) => {
   });
 };
 //tạo json web token
-const CreateJwt = async (email, id) => {
+const CreateJwt = async (email, id ) => {
   const payload = {
     email,
     id,
@@ -55,9 +55,9 @@ const CreateJwt = async (email, id) => {
 };
 //đăng ký account
 const resgiter = async (req, res) => {
-  const { email, fullname, passworrd } = req.body;
+  const { email, name, passworrd } = req.body;
 
-  console.log(email, fullname, passworrd);
+  console.log(email, name, passworrd);
   const existingEmail = await userModel.findOne({ email });
 
   if (existingEmail) {
@@ -72,7 +72,7 @@ const resgiter = async (req, res) => {
     const user = new userModel({
       email,
       passworrd: hash,
-      fullname: fullname ?? "",
+      name:  name?? "",
     });
     await user.save();
 
@@ -89,8 +89,6 @@ const resgiter = async (req, res) => {
 ///login
 const login = async (req, res) => {
   const { email, passworrd } = req.body;
-
- 
   const findemail = await userModel.findOne({ email });
   console.log(findemail);
   try {
@@ -116,7 +114,7 @@ const login = async (req, res) => {
     data: {
       email: findemail.email,
       id: findemail.id,
-      token: await CreateJwt(email, findemail.id),
+      token: await CreateJwt(email, findemail.id ),
       isUpdated:findemail.isUpdated??false
     },
   });
@@ -216,4 +214,80 @@ const updateNewPassWord = async(req , res) =>{
       })
     }
 }
-module.exports = { resgiter, login, verification, resetPassword ,updateNewPassWord};
+
+
+const hanldeLoginWithGoogle  = async(req , res) =>{
+const {userInfor} = req.body
+
+const data = userInfor.user
+ const existingUser =  await userModel.findOne({email:userInfor.user.email})
+  
+  if(existingUser){
+    await userModel.findByIdAndUpdate(existingUser.id , {...data})
+    console.log("update done")
+  }else{
+      const newdata = new userModel({
+        ...data
+      })
+      await newdata.save()
+      console.log("save sucssesfuly")   
+  }
+      const datareturn = await userModel.findOne({email:userInfor.user.email})
+
+      res.status(200).json({
+        message: "Login sucssesfuly",
+        data: {
+          email: datareturn.email,
+          id: datareturn.id,
+          token: await CreateJwt(datareturn.email, datareturn.id ),
+          isUpdated:datareturn.isUpdated??false , 
+          ...data
+        },
+      });
+}
+
+const handleLoginWithFaceBook = async( req , res)=>{
+  const {datauser} = req.body
+ const existingUser = await userModel.findOne({email:datauser.userID})
+ console.log(existingUser)
+
+ if(!existingUser){
+    const newdata =  new userModel({
+      name:datauser.name , 
+      email:datauser.userID , 
+      photo:datauser.imageURL , 
+      familyName:datauser.firstName , 
+      givenName:datauser.lastName ,
+      ...datauser
+    })
+
+    await newdata.save()
+    console.log("create done")
+
+ }else{
+  const dataupdate = {
+    name:datauser.name , 
+    email:datauser.userID , 
+    photo:datauser.imageURL , 
+    familyName:datauser.firstName , 
+    givenName:datauser.lastName ,
+    ...datauser
+  }
+  await userModel.findByIdAndUpdate(existingUser.id , {...dataupdate})
+  console.log("update done")
+ }
+
+ const datareturn = await userModel.findOne({email:datauser.userID})
+
+ res.status(200).json({
+   message: "Login sucssesfuly",
+   data: {
+    email: datareturn.email,
+    id: datareturn.id,
+    token: await CreateJwt(datareturn.email, datareturn.id ),
+    isUpdated:datareturn.isUpdated??false , 
+    ...datauser 
+   },
+ });
+}
+module.exports = { resgiter, login, verification, resetPassword ,updateNewPassWord , hanldeLoginWithGoogle ,handleLoginWithFaceBook}   ;
