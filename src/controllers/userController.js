@@ -2,7 +2,7 @@ const userModel = require("../model/userModel");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken");
-const mongoose = require('mongoose')
+const mongoose = require("mongoose");
 require("dotenv").config();
 
 const transporter = nodemailer.createTransport({
@@ -42,7 +42,7 @@ const verification = async (req, res) => {
   });
 };
 //tạo json web token
-const CreateJwt = async (email, id ) => {
+const CreateJwt = async (email, id) => {
   const payload = {
     email,
     id,
@@ -72,7 +72,7 @@ const resgiter = async (req, res) => {
     const user = new userModel({
       email,
       passworrd: hash,
-      name:  name?? "",
+      name: name ?? "",
     });
     await user.save();
 
@@ -114,8 +114,9 @@ const login = async (req, res) => {
     data: {
       email: findemail.email,
       id: findemail.id,
-      token: await CreateJwt(email, findemail.id ),
-      isUpdated:findemail.isUpdated??false
+      token: await CreateJwt(email, findemail.id),
+      isUpdated: findemail.isUpdated ?? false,
+      photo: findemail.photo ?? "",
     },
   });
 };
@@ -175,119 +176,148 @@ const resetPassword = async (req, res) => {
   }
 };
 
+const updateNewPassWord = async (req, res) => {
+  const { password, newpassword } = req.body;
+  const { id } = req.params;
+  console.log(password);
+  const existingUser = await userModel.findById(id);
+  if (existingUser) {
+    const comparePass = await bcrypt.compare(password, existingUser.passworrd);
 
+    console.log(comparePass);
+    if (comparePass) {
+      const salt = bcrypt.genSaltSync(10);
+      const hashpass = await bcrypt.hashSync(newpassword, salt);
+      await userModel
+        .findByIdAndUpdate(id, {
+          passworrd: hashpass,
+          isUpdated: false,
+          updatedAt: new Date(),
+        })
+        .then(() => console.log("update sucssefuly"));
 
-const updateNewPassWord = async(req , res) =>{
-    const {  password , newpassword} = req.body
-    const {id} = req.params
-  console.log(password)
-    const existingUser =  await userModel.findById(id);
-    if(existingUser){
-        const comparePass = await bcrypt.compare(password , existingUser.passworrd )
-
-        console.log(comparePass)
-        if(comparePass){
-            const salt =  bcrypt.genSaltSync(10)
-            const hashpass = await bcrypt.hashSync(newpassword , salt)
-            await userModel.findByIdAndUpdate(id,{
-              passworrd: hashpass, isUpdated: false, updatedAt: new Date() 
-            } ).then(()=>console.log('update sucssefuly'))
-
-            res.status(200).send({
-              message: "reset pass sucsessfully!!!",
-              data: {
-                email: existingUser.email,
-                id: existingUser.id,
-                password: hashpass,
-                token: await CreateJwt(existingUser.email, existingUser.id),
-                isUpdated:existingUser.isUpdated??false
-              },
-            })
-        }else{
-          res.status(400).json({
-            message:'password is correct'
-          })
-        }
-    }else{
-      res.status(401).json({
-        message:"user not found!!"
-      })
-    }
-}
-
-
-const hanldeLoginWithGoogle  = async(req , res) =>{
-const {userInfor} = req.body
-
-const data = userInfor.user
- const existingUser =  await userModel.findOne({email:userInfor.user.email})
-  
-  if(existingUser){
-    await userModel.findByIdAndUpdate(existingUser.id , {...data})
-    console.log("update done")
-  }else{
-      const newdata = new userModel({
-        ...data
-      })
-      await newdata.save()
-      console.log("save sucssesfuly")   
-  }
-      const datareturn = await userModel.findOne({email:userInfor.user.email})
-
-      res.status(200).json({
-        message: "Login sucssesfuly",
+      res.status(200).send({
+        message: "reset pass sucsessfully!!!",
         data: {
-          email: datareturn.email,
-          id: datareturn.id,
-          token: await CreateJwt(datareturn.email, datareturn.id ),
-          isUpdated:datareturn.isUpdated??false , 
-          ...data
+          email: existingUser.email,
+          id: existingUser.id,
+          password: hashpass,
+          token: await CreateJwt(existingUser.email, existingUser.id),
+          isUpdated: existingUser.isUpdated ?? false,
+          photo: existingUser.photo ?? "",
         },
       });
-}
-
-const handleLoginWithFaceBook = async( req , res)=>{
-  const {datauser} = req.body
- const existingUser = await userModel.findOne({email:datauser.userID})
- console.log(existingUser)
-
- if(!existingUser){
-    const newdata =  new userModel({
-      name:datauser.name , 
-      email:datauser.userID , 
-      photo:datauser.imageURL , 
-      familyName:datauser.firstName , 
-      givenName:datauser.lastName ,
-      ...datauser
-    })
-
-    await newdata.save()
-    console.log("create done")
-
- }else{
-  const dataupdate = {
-    name:datauser.name , 
-    email:datauser.userID , 
-    photo:datauser.imageURL , 
-    familyName:datauser.firstName , 
-    givenName:datauser.lastName ,
-    ...datauser
+    } else {
+      res.status(400).json({
+        message: "password is correct",
+      });
+    }
+  } else {
+    res.status(401).json({
+      message: "user not found!!",
+    });
   }
-  await userModel.findByIdAndUpdate(existingUser.id , {...dataupdate})
-  console.log("update done")
- }
+};
 
- const datareturn = await userModel.findOne({email:datauser.userID})
+const hanldeLoginWithGoogle = async (req, res) => {
+  const { userInfor } = req.body;
 
- res.status(200).json({
-   message: "Login sucssesfuly",
-   data: {
-    email: datareturn.email,
-    id: datareturn.id,
-    token: await CreateJwt(datareturn.email, datareturn.id ),
-    isUpdated:datareturn.isUpdated??false , 
-    ...datauser 
-   },
- });
+  const data = userInfor.user;
+  const existingUser = await userModel.findOne({ email: userInfor.user.email });
+
+  if (existingUser) {
+    await userModel.findByIdAndUpdate(existingUser.id, { ...data });
+    console.log("update done");
+  } else {
+    const newdata = new userModel({
+      ...data,
+    });
+    await newdata.save();
+    console.log("save sucssesfuly");
+  }
+  const datareturn = await userModel.findOne({ email: userInfor.user.email });
+  console.log("data user", datareturn.id);
+  res.status(200).json({
+    message: "Login sucssesfuly",
+    data: {
+      email: datareturn.email,
+      iduser: datareturn.id,
+      token: await CreateJwt(datareturn.email, datareturn.id),
+      isUpdated: datareturn.isUpdated ?? false,
+      photo: datareturn.photo ?? "",
+      ...data,
+    },
+  });
+};
+
+const handleLoginWithFaceBook = async (req, res) => {
+  const { datauser } = req.body;
+  const existingUser = await userModel.findOne({ email: datauser.userID });
+  console.log(existingUser);
+
+  if (!existingUser) {
+    const newdata = new userModel({
+      name: datauser.name,
+      email: datauser.userID,
+      photo: datauser.imageURL,
+      familyName: datauser.firstName,
+      givenName: datauser.lastName,
+      ...datauser,
+    });
+
+    await newdata.save();
+    console.log("create done");
+  } else {
+    const dataupdate = {
+      name: datauser.name,
+      email: datauser.userID,
+      photo: datauser.imageURL,
+      familyName: datauser.firstName,
+      givenName: datauser.lastName,
+      ...datauser,
+    };
+    await userModel.findByIdAndUpdate(existingUser.id, { ...dataupdate });
+    console.log("update done");
+  }
+
+  const datareturn = await userModel.findOne({ email: datauser.userID });
+
+  res.status(200).json({
+    message: "Login sucssesfuly",
+    data: {
+      email: datareturn.email,
+      iduser: datareturn.id,
+      token: await CreateJwt(datareturn.email, datareturn.id),
+      isUpdated: datareturn.isUpdated ?? false,
+
+      photo: datareturn.photo ?? "",
+      ...datauser,
+    },
+  });
+};
+
+
+const getAllUser = async(req , res) =>{
+
+  const data = await userModel.find({})
+
+  const datareturn = []
+
+  data.forEach(item=>datareturn.push({
+    email:item.email , 
+    name:item.name , 
+    iduser:item.id
+  }))
+  console.log(datareturn)
+    res.send(datareturn)
 }
-module.exports = { resgiter, login, verification, resetPassword ,updateNewPassWord , hanldeLoginWithGoogle ,handleLoginWithFaceBook}   ;
+module.exports = {
+  resgiter,
+  login,
+  verification,
+  resetPassword,
+  updateNewPassWord,
+  hanldeLoginWithGoogle,
+  handleLoginWithFaceBook,
+  getAllUser
+};

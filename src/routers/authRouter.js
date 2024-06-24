@@ -1,9 +1,10 @@
 const Router =  require('express')
-const { resgiter, login, verification, resetPassword, updateNewPassWord, hanldeLoginWithGoogle, handleLoginWithFaceBook } = require('../controllers/userController')
+const { resgiter, login, verification, resetPassword, updateNewPassWord, hanldeLoginWithGoogle, handleLoginWithFaceBook, getAllUser } = require('../controllers/userController')
+const verifiTocken = require('../../middleware/verifiMidleware')
 
 
 const authRouter = Router()
-
+authRouter.get('/getalluser' ,verifiTocken, getAllUser)
 authRouter.post('/regiter' , resgiter )
 authRouter.post('/login' , login )
 authRouter.post('/verification' , verification )
